@@ -2,7 +2,34 @@
 
   'use strict'
 
-  var REQUEST_URL = '/admin/resources';
+  var REQUEST_URL   = '/admin/resources';
+  var INSRAGRAM_URL = 'https://www.instagram.com/publicapi/oembed/?url={url}';
+
+  var FORM_TMPL = (
+
+    '<div class="tinymce-instagram-window">' +
+
+      '<div class="row">' +
+
+        '<div class="col-md-12">' +
+
+          '<div class="form-group">' +
+            '<label>{utl_title}</label>' +
+            '<input type="url" class="form-control tinymce-instagram-url" />' +
+          '</div>' +
+
+          '<div class="form-group">' +
+            '<label>{preview_title}</label>' +
+            '<div class="tinymce-instagram-preview" style="background-image:url(\'{bg}\')">&nbsp;</div>' +
+          '</div>' +
+
+        '</div>' +
+
+      '</div>' +
+
+    '</div>'
+
+  ); // FORM_TMPL
 
   function Tmpl(format, obj) {
 
@@ -14,6 +41,13 @@
 
   function InstagramCard(ed, url) {
 
+    var loading,
+        urlBefore,
+        contentData;
+
+    var inputEl,
+        prevEl;
+
     function showDialog() {
 
       var win = ed.windowManager.open({
@@ -24,7 +58,8 @@
 
         html:  Tmpl(FORM_TMPL, {
           utl_title:      'Введите ссылку на инстаграм',
-          preview_title:  'Предпросмотр'
+          preview_title:  'Предпросмотр',
+          bg: url + '/img/instagram.svg'
         }),
 
         buttons: [
@@ -58,17 +93,28 @@
 
     function onSuccess(resp, s, o) {
 
+      if (resp && resp.html) {
+
+        contentData = onPrepareData(resp.html);
+        prevEl.html(contentData);
+
+        setTimeout(function() {
+          instgrm && instgrm.Embeds.process();
+        }, 150);
+
+      } else {
+        prevEl.html('<p class="bg-danger">Неверный ответ сервера</p>');
+      }
 
     }; // onSuccess
 
     function onFailure() {
-
+      prevEl.html('<p class="bg-danger">Ошибка обработки</p>');
     }; // onFailure
 
     function onLoadInstagram(evt) {
 
-/*
-      var url = Tmpl(TWITTER_URL, { url: inputEl.val() });
+      var url = Tmpl(INSRAGRAM_URL, { url: inputEl.val() });
 
       if (loading || (urlBefore == url)) { return; }
 
@@ -76,7 +122,7 @@
       loading     = true;
       urlBefore   = url;
 
-      prevEl.html('Загрузка...');
+      prevEl.html('<p class="bg-info">Загрузка...</p>');
 
       $.ajax({
 
@@ -97,18 +143,36 @@
         timeout:      60000
 
       }); // ajax
-*/
 
     }; // onLoadTweet
 
     function insertInstagram() {
 
-//      if (String(contentData).length == 0) { return; }
+      if (String(contentData).length == 0) { return; }
 
-//      ed.execCommand('mceInsertContent', false, contentData + "<br />");
+      ed.execCommand('mceInsertContent', false, contentData + "<br />");
       ed.windowManager.close();
 
+      onReset();
+
     }; // insertInstagram
+
+    function onPrepareData(data) {
+
+      var el = $.parseHTML(data);
+      if (el.length == 0) { return; }
+
+      return el[0].outerHTML;
+
+    }; // onPrepareData
+
+    function onReset() {
+
+      loading     = false;
+      urlBefore   = "";
+      contentData = "";
+
+    }; //  onReset
 
     //-------------------------------------------------------------------------
     ed.addButton('instagram', {
